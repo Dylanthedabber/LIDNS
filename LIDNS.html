@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Setup Guide</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            background: #0a0d14;
+            color: #cfd8dc;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            padding: 40px 20px;
+            max-width: 680px;
+            margin: 0 auto;
+            font-size: 14px;
+            line-height: 1.6
+        }
+
+        h1 {
+            color: #81d4fa;
+            font-size: 22px;
+            margin-bottom: 6px;
+            letter-spacing: .3px
+        }
+
+        .subtitle {
+            color: #37474f;
+            font-size: 12px;
+            margin-bottom: 32px
+        }
+
+        .step {
+            background: #060d1a;
+            border: 1px solid #1a2744;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            overflow: hidden
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            background: #080f1c;
+            border-bottom: 1px solid #1a2744
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #1565c0;
+            color: #e3f2fd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: bold;
+            flex-shrink: 0
+        }
+
+        .step-title {
+            color: #90caf9;
+            font-size: 14px;
+            font-weight: 600
+        }
+
+        .step-body {
+            padding: 16px 18px
+        }
+
+        .step-body ol,
+        .step-body ul {
+            padding-left: 20px;
+            margin-top: 6px
+        }
+
+        .step-body li {
+            margin-bottom: 6px;
+            color: #b0bec5
+        }
+
+        code {
+            background: #0d1929;
+            color: #4fc3f7;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: monospace
+        }
+
+        .btn {
+            display: inline-block;
+            background: #1565c0;
+            color: #e3f2fd;
+            padding: 10px 22px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 13px;
+            margin-top: 10px;
+            transition: background .15s
+        }
+
+        .btn:hover {
+            background: #1976d2
+        }
+
+        .note {
+            background: #0d1929;
+            border-left: 3px solid #1565c0;
+            padding: 10px 14px;
+            border-radius: 0 4px 4px 0;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #546e7a
+        }
+
+        .warn {
+            background: #1a0d00;
+            border-left: 3px solid #e65100;
+            padding: 10px 14px;
+            border-radius: 0 4px 4px 0;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #bf360c
+        }
+
+        .warn strong {
+            color: #ff6d00
+        }
+
+        .faq {
+            margin-top: 30px
+        }
+
+        .faq h2 {
+            color: #546e7a;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            margin-bottom: 14px
+        }
+
+        .qa {
+            margin-bottom: 14px
+        }
+
+        .qa .q {
+            color: #81d4fa;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 3px
+        }
+
+        .qa .a {
+            color: #78909c;
+            font-size: 12px
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                color: #000
+            }
+
+            .warn {
+                display: none
+            }
+
+            .step {
+                border: 1px solid #ccc
+            }
+
+            .step-header {
+                background: #eee
+            }
+
+            .step-num {
+                background: #1565c0
+            }
+
+            .step-title,
+            .step-body li,
+            .note {
+                color: #000
+            }
+
+            code {
+                background: #f0f0f0;
+                color: #000
+            }
+
+            .btn {
+                background: #1565c0;
+                color: #fff
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>LIDNS setup</h1>
+    <p class="subtitle">One-time setup, Takes ~2 minutes and Works for ~10.5 hours</p>
+
+    <div class="warn">
+        <strong>Important:</strong> Do all steps on your <strong>home network or hotspot only.</strong>
+        This will not work on school most Wi-Fi as the dns is hard set
+    </div>
+
+    <br>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Download the Certificate</div>
+        </div>
+        <div class="step-body">
+            <p>This certificate lets your Chromebook trust our server's HTTPS connections.</p>
+            <a class="btn" href="https://drive.google.com/uc?export=download&id=1BvE7JQq_FfD2mivcmgm7oFf-Tx7ycpqI">Download network-cert.crt</a>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">Import the Certificate in Chrome</div>
+        </div>
+        <div class="step-body">
+            <ol>
+                <li>Open Chrome and go to <code>chrome://certificate-manager/localcerts/usercerts</code></li>
+                <li>Click <strong>Import</strong></li>
+                <li>Select the downloaded file <code>network-cert.crt</code></li>
+                <li>Click <strong>Open</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">3</div>
+            <div class="step-title">Change DNS Settings</div>
+        </div>
+        <div class="step-body">
+            <ol>
+                <li>Press the <strong>Search key</strong> (magnifying glass) on your keyboard</li>
+                <li>Type <strong>Settings</strong> and press Enter</li>
+                <li>Click <strong>Network</strong></li>
+                <li>Click on your current Wi-Fi network, then click it again to open details</li>
+                <li>Scroll down and click the <strong>Network</strong> tab</li>
+                <li>Select <strong>Custom name servers</strong></li>
+                <li>Enter <code>192.227.130.71</code> in the first box, leave all others as <code>0.0.0.0</code></li>
+            </ol>
+            <div class="note">You only need to do this once on your home/hotspot network.</div>
+        </div>
+    </div>
+
+    <div class="step">
+        <div class="step-header">
+            <div class="step-num">4</div>
+            <div class="step-title">Pre-warm the Cache</div>
+        </div>
+        <div class="step-body">
+            <p>Visit the prewarm tool to pre-load all blocked sites into your Chromebook's filter cache.</p>
+            <a class="btn" href="https://lsrelay-config-production.s3.amazonaws.com/prewarm">Open Prewarm Tool</a>
+            <div class="note">Select categories and click <strong>Start Prewarm</strong>.</div>
+        </div>
+    </div>
+
+</body>
+
+</html>
