@@ -8,7 +8,7 @@
 
 ---
 
-## Step 1 — Download the Certificate
+## Step 1 Download the Certificate
 
 This certificate lets your Chromebook trust the server's HTTPS connections.
 
@@ -16,7 +16,7 @@ This certificate lets your Chromebook trust the server's HTTPS connections.
 
 ---
 
-## Step 2 — Import the Certificate in Chrome
+## Step 2 Import the Certificate in Chrome
 
 1. Open Chrome and go to:  
    `chrome://certificate-manager/localcerts/usercerts`
@@ -26,7 +26,7 @@ This certificate lets your Chromebook trust the server's HTTPS connections.
 
 ---
 
-## Step 3 — Change DNS Settings
+## Step 3 Change DNS Settings
 
 1. Press the **Search key** (magnifying glass)
 2. Type **Settings** and press Enter
@@ -41,7 +41,7 @@ This certificate lets your Chromebook trust the server's HTTPS connections.
 
 ---
 
-## Step 4 — Pre-warm the Cache
+## Step 4 Pre-warm the Cache
 
 Visit the tool to preload blocked sites into your Chromebook’s cache.
 
