@@ -19,10 +19,13 @@ COPY lsrelay/ /var/www/lsrelay/
 COPY nginx-lsrelay.conf /etc/nginx/sites-available/lsrelay
 COPY ext.cnf /etc/ssl/lsrelay/ext.cnf
 
+# Baked-in CA (fixed across all LIDNS installs so users only install the cert once)
+RUN mkdir -p /etc/ssl/lsrelay /etc/coredns
+COPY ca.key ca.crt /etc/ssl/lsrelay/
+
 # nginx setup
 RUN ln -sf /etc/nginx/sites-available/lsrelay /etc/nginx/sites-enabled/lsrelay && \
-    rm -f /etc/nginx/sites-enabled/default && \
-    mkdir -p /etc/ssl/lsrelay /etc/coredns
+    rm -f /etc/nginx/sites-enabled/default
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

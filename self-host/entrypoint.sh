@@ -33,13 +33,10 @@ fi
 PUBLIC_IP=$(curl -s --max-time 10 https://api.ipify.org || curl -s --max-time 10 https://ifconfig.me)
 echo "Public IP: $PUBLIC_IP"
 
-# Generate certs if not already present (volume-persisted)
+# Use baked-in CA, generate server cert per-IP if not already present
 cd /etc/ssl/lsrelay
-if [ ! -f ca.crt ]; then
-    echo "Generating SSL certificates..."
-    openssl genrsa -out ca.key 2048
-    openssl req -new -x509 -key ca.key -out ca.crt -days 3650 \
-        -subj "/CN=LIDNS Network CA ($PUBLIC_IP)" 2>/dev/null
+if [ ! -f server.crt ]; then
+    echo "Generating server certificate for $PUBLIC_IP..."
 
     # Build ext.cnf dynamically so the server cert also covers the bare IP
     cat > /etc/ssl/lsrelay/ext.cnf << EXTEOF
@@ -70,9 +67,9 @@ EXTEOF
         -subj "/CN=lsrelay-config-production.s3.amazonaws.com" 2>/dev/null
     openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
         -out server.crt -days 3650 -extfile /etc/ssl/lsrelay/ext.cnf -extensions v3_req 2>/dev/null
-    echo "Certificates generated."
+    echo "Server certificate generated."
 else
-    echo "Using existing certificates."
+    echo "Using existing server certificate."
 fi
 
 # Write the hosts file for CoreDNS
