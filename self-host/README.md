@@ -96,7 +96,7 @@ The setup script handles everything:
 - Builds and starts all services in Docker
 - Generates SSL certs tied to your server's IP
 
-When you see `=== LIDNS Ready ===` with your IP printed, it is done.
+This will take a while, it is done when no new text is being printed.
 
 ---
 
@@ -110,11 +110,13 @@ http://YOUR_VPS_IP/setup
 
 Follow the steps on that page to install the cert and set your DNS.
 
+also if the ip is blocked on your chromebook, then vist on anathere device like your phone or pc if you have one.
+
 ---
 
 ## Step 5: Prewarm
 
-After changing DNS, visit:
+After changing DNS and installing the cert (send it to your school email if blocked), visit:
 
 ```
 http://YOUR_VPS_IP/prewarm
