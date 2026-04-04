@@ -22,7 +22,7 @@ A Chromebook, and a home Wi-Fi or hotspot to set LIDNS up on. It needs to be a n
 
 Chrome needs this to trust the server's connection. Without it you'll just get a cert error and nothing will work.
 
-[Download network-cert.crt](https://drive.google.com/uc?export=download&id=1BvE7JQq_FfD2mivcmgm7oFf-Tx7ycpqI)
+[Download network-cert.crt](https://drive.google.com/file/d/1EyrxYM5AwYXIr7ohF9maJMbLHgDYR3P6/view?usp=sharing)
 
 ---
 
@@ -42,6 +42,7 @@ Chrome needs this to trust the server's connection. Without it you'll just get a
 3. Scroll to the **Network** tab
 4. Select **Custom name servers**
 5. Put `192.227.130.71` in the first box, leave the rest as `0.0.0.0`
+6. Go to `chrome://restart`, then test if things are being unblocked by visiting [coolmathgames.com](https://coolmathgames.com)
 
 > Only needs to be set once per network.
 
@@ -49,12 +50,12 @@ Chrome needs this to trust the server's connection. Without it you'll just get a
 
 ### Step 4: Pre-warm the Cache
 
-This loads blocked sites into Chrome's filter cache ahead of time so they actually resolve when you're at school.
+This step caches sites so they stay unblocked on school Wi-Fi, even when you're not on your home network or hotspot.
 
-1. Go to `chrome://restart` and wait for Chrome to come back up
-2. Open the [Prewarm Tool](https://lsrelay-config-production.s3.amazonaws.com/prewarm)
-3. Look at the bottom and make sure it says **Extension Verified**, then pick how many websites you want (25k is a good amount) and click **Start**
-4. When it's done, go to `chrome://restart` again to lock it in
+1. Open the [Prewarm Tool](https://lsrelay-config-production.s3.amazonaws.com/prewarm)
+2. Look at the bottom and make sure it says **Extension Verified**, then pick how many websites you want (25k is a good amount) and click **Start**
+3. When it's done, switch to your school network
+4. Go to `chrome://restart` to lock it in
 
 ---
 
