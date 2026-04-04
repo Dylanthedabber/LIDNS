@@ -108,7 +108,7 @@ On your home network or hotspot (not school Wi-Fi), visit:
 http://YOUR_VPS_IP/setup
 ```
 
-Follow the steps on that page to install the cert and set your DNS.
+Follow the steps on that page to install the cert and set your DNS. After setting the DNS, do `chrome://restart` then test by visiting [coolmathgames.com](https://coolmathgames.com) to confirm things are being unblocked.
 
 also if the ip is blocked on your chromebook, then vist on anathere device like your phone or pc if you have one.
 
@@ -116,13 +116,15 @@ also if the ip is blocked on your chromebook, then vist on anathere device like 
 
 ## Step 5: Prewarm
 
+This step caches sites so they stay unblocked on school Wi-Fi, even when you're not on your home network or hotspot.
+
 After changing DNS and installing the cert (send it to your school email if blocked), visit:
 
 ```
 http://YOUR_VPS_IP/prewarm
 ```
 
-Run the prewarm with 25K domains. When it finishes, go to `chrome://restart`, then switch back to school Wi-Fi.
+Run the prewarm with 25K domains. When it finishes, switch to your school network, then go to `chrome://restart` to lock it in.
 
 The bypass works for about 10 days before Lightspeed pushes a new filter policy. Re-run the prewarm tool to refresh.
 
