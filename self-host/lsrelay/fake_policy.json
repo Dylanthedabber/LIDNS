@@ -1,0 +1,18 @@
+{
+  "Policies": [{
+    "Id": "fake-policy",
+    "ContentFilterSettings": {
+      "ChromebookOnly": false,
+      "Enabled": false,
+      "Categories": {},
+      "BlockedDomains": [],
+      "AllowedDomains": []
+    },
+    "Reporting": {
+      "Enabled": false
+    },
+    "SafeSearch": {
+      "Enabled": false
+    }
+  }]
+}

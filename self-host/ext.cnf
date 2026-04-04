@@ -1,0 +1,19 @@
+[req]
+req_extensions = v3_req
+[v3_req]
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = lsrelay-config-production.s3.amazonaws.com
+DNS.2 = lsrelay-extensions-production.s3.amazonaws.com
+DNS.3 = lsrelay-reports-production.s3.amazonaws.com
+DNS.4 = lsrelayaccess.com
+DNS.5 = *.lsrelayaccess.com
+DNS.6 = agent-backend-api-production.lightspeedsystems.com
+DNS.7 = *.lightspeedsystems.com
+DNS.8 = *.lightspeedsystems.app
+DNS.9 = *.ably.io
+DNS.10 = production-gc.lsfilter.com
+DNS.11 = *.lsfilter.com
+DNS.12 = devices.filter.relay.school
+DNS.13 = *.filter.relay.school
+DNS.14 = *.relay.school

@@ -1,0 +1,11 @@
+services:
+  lidns:
+    build: .
+    network_mode: host
+    privileged: true
+    volumes:
+      - certs:/etc/ssl/lsrelay
+    restart: unless-stopped
+
+volumes:
+  certs:

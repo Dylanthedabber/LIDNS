@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LS Cache Prewarm</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#060d1a;
+  color:#4fc3f7;
+  font-family:monospace;
+  padding:40px 20px;
+  display:flex;flex-direction:column;align-items:center;min-height:100vh;
+}
+
+/* Two background layers: send (body) + confirm (fixed overlay) */
+#confirm-layer{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:transparent;
+  transition:background 0.5s ease;
+}
+body > *{position:relative;z-index:1}
+
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes pulse{
+  0%,100%{filter:drop-shadow(0 0 6px rgba(21,101,192,.3))}
+  50%     {filter:drop-shadow(0 0 22px rgba(66,165,245,.8))}
+}
+@keyframes countUp{from{opacity:.4;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes statusFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes btnReady{
+  0%  {box-shadow:0 0 0 0 rgba(21,101,192,.6)}
+  70% {box-shadow:0 0 0 12px rgba(21,101,192,0)}
+  100%{box-shadow:0 0 0 0 rgba(21,101,192,0)}
+}
+
+.card{
+  padding:20px 0;width:100%;max-width:700px;margin-bottom:20px;
+  opacity:0;transform:translateY(16px);
+}
+.card{animation:fadeUp .5s ease .1s forwards}
+
+/* Slider */
+.slider-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.slider-title{font-size:13px;color:#546e7a}
+.slider-val{font-size:28px;color:#81d4fa;font-weight:bold;display:inline-block}
+.slider-val.bump{animation:countUp .15s ease}
+input[type=range]{
+  width:100%;-webkit-appearance:none;appearance:none;
+  height:6px;border-radius:3px;background:#1e3f7a;outline:none;cursor:pointer;margin-bottom:10px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:#1565c0;cursor:pointer;border:2px solid #42a5f5;
+  transition:transform .15s,box-shadow .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 6px rgba(66,165,245,.18)}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.25);box-shadow:0 0 0 8px rgba(66,165,245,.25)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#1565c0;cursor:pointer;border:2px solid #42a5f5}
+.snap-ticks{display:flex;justify-content:space-between;padding:0 10px}
+.snap-tick{font-size:10px;color:#263238;cursor:pointer;transition:color .15s,transform .1s;user-select:none;display:inline-block}
+.snap-tick:hover{color:#546e7a;transform:scale(1.15)}
+.snap-tick.active{color:#1565c0}
+
+/* Circle */
+.circle-wrap{position:relative;width:280px;height:280px;margin:0 auto 16px}
+.circle-wrap svg{transform:rotate(-90deg)}
+#circle-bg  {fill:none;stroke:#0d1929;stroke-width:18}
+#circle-send{fill:none;stroke:#1a3a6e;stroke-width:18;stroke-linecap:round;stroke-dasharray:817;stroke-dashoffset:817;transition:stroke-dashoffset .08s linear}
+#circle-glow{fill:none;stroke:#1565c0;stroke-width:18;stroke-linecap:round;stroke-dasharray:817;stroke-dashoffset:817;opacity:.2;filter:blur(6px)}
+#circle-bar {fill:none;stroke:url(#grad);stroke-width:18;stroke-linecap:round;stroke-dasharray:817;stroke-dashoffset:817}
+#circle-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+#circle-pct .pct-num{font-size:62px;color:#81d4fa;font-weight:bold;line-height:1;display:block;transition:color .3s}
+#circle-pct .pct-lbl{font-size:13px;color:#37474f;margin-top:5px;display:block;transition:color .3s}
+#circle-sub {font-size:13px;color:#546e7a;text-align:center;margin-bottom:2px;min-height:18px}
+#circle-sub2{font-size:12px;color:#37474f;text-align:center;margin-bottom:4px;min-height:16px}
+#circle-rate{font-size:12px;color:#1565c0;text-align:center;min-height:16px;margin-bottom:16px}
+
+.btn{
+  background:#1565c0;color:#e3f2fd;border:1px solid transparent;padding:14px 40px;
+  font-family:monospace;font-size:16px;cursor:pointer;border-radius:4px;
+  width:100%;max-width:440px;
+  transition:background .2s,transform .1s,box-shadow .2s;
+}
+.btn:hover:not(:disabled){background:#1976d2;transform:translateY(-1px);box-shadow:0 4px 20px rgba(21,101,192,.4)}
+.btn:active:not(:disabled){transform:translateY(1px);box-shadow:none}
+.btn:disabled{background:#0d1929;color:#2a4060;border:1px solid #1a2744;cursor:default;transform:none;box-shadow:none}
+.btn.pulse-ready{animation:btnReady 1s ease}
+
+#status{font-size:13px;color:#37474f;text-align:center;margin-top:10px;max-width:440px;min-height:18px}
+#status.update{animation:statusFade .25s ease}
+
+#canary-box{display:none;width:100%;max-width:440px;font-size:12px;margin-top:10px;text-align:center;opacity:0;animation:fadeIn .4s ease forwards}
+#canary-status{font-size:13px;font-weight:bold;margin-top:4px}
+
+.running #circle-wrap svg{animation:pulse 2s ease-in-out infinite}
+
+/* Search bar */
+.search-wrap{width:100%;max-width:700px;margin-bottom:20px;opacity:0;transform:translateY(16px);animation:fadeUp .5s ease 0s forwards}
+#search-input{width:100%;background:transparent;border:none;border-bottom:1px solid #1e3f7a;color:#81d4fa;padding:8px 0;font-family:monospace;font-size:14px;outline:none;transition:border-color .2s}
+#search-input::placeholder{color:#263238}
+#search-input:focus{border-bottom-color:#1565c0}
+#search-result{font-size:13px;margin-top:10px;min-height:20px;transition:opacity .2s}
+.rank-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px;background:#0d1929;border:1px solid #1a2744;color:#546e7a}
+.rank-badge.top1k {background:#0d2137;border-color:#29b6f6;color:#29b6f6}
+.rank-badge.top5k {background:#0d2137;border-color:#1565c0;color:#81d4fa}
+.rank-badge.top10k{background:#0a1f0a;border-color:#2e7d32;color:#66bb6a}
+.rank-badge.top100k{background:#1a1200;border-color:#f57f17;color:#ffca28}
+.rank-badge.top1m {background:#1a0a00;border-color:#bf360c;color:#ff7043}
+.rank-badge.none  {background:#0d1929;border-color:#37474f;color:#37474f}
+.rank-custom{font-size:11px;color:#546e7a;margin-left:6px}
+
+/* Toggle switch */
+.slider-row{display:flex;align-items:center;gap:14px}
+.toggle-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0}
+.toggle-lbl{font-size:9px;color:#37474f;user-select:none;white-space:nowrap}
+.toggle{position:relative;display:inline-block;width:34px;height:18px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-pill{position:absolute;inset:0;background:#1a2744;border-radius:9px;transition:background .2s}
+.toggle input:checked ~ .toggle-pill{background:#1565c0}
+.toggle-pill::after{content:'';position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;opacity:.5}
+.toggle input:checked ~ .toggle-pill::after{transform:translateX(16px);opacity:1}
+.slider-inner{flex:1;min-width:0}
+</style>
+</head>
+<body>
+<div id="confirm-layer"></div>
+
+<div class="search-wrap">
+  <input id="search-input" type="text" placeholder="Search domain rank... (e.g. google.com)" autocomplete="off" oninput="onSearch(this.value)">
+  <div id="search-result"></div>
+</div>
+
+<div class="card">
+  <div class="slider-label">
+    <span class="slider-title">Domains to prewarm</span>
+    <span class="slider-val" id="slider-display">5K</span>
+  </div>
+  <div class="slider-row">
+    <div class="toggle-wrap">
+      <label class="toggle">
+        <input type="checkbox" id="custom-toggle" checked>
+        <span class="toggle-pill"></span>
+      </label>
+      <span class="toggle-lbl">Custom</span>
+    </div>
+    <div class="slider-inner">
+      <input type="range" id="domain-slider" min="0" max="8" value="3" step="1" oninput="onSlider(this.value)">
+      <div class="snap-ticks" id="snap-ticks"></div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="text-align:center;padding-top:0;max-width:440px">
+  <div class="circle-wrap" id="circle-wrap">
+    <svg width="280" height="280" viewBox="0 0 280 280">
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1565c0"/>
+          <stop offset="100%" style="stop-color:#42a5f5"/>
+        </linearGradient>
+      </defs>
+      <circle id="circle-bg"   cx="140" cy="140" r="130"/>
+      <circle id="circle-send" cx="140" cy="140" r="130"/>
+      <circle id="circle-glow" cx="140" cy="140" r="130"/>
+      <circle id="circle-bar"  cx="140" cy="140" r="130"/>
+    </svg>
+    <div id="circle-pct">
+      <span class="pct-num">0%</span>
+      <span class="pct-lbl">ready</span>
+    </div>
+  </div>
+  <div id="circle-sub"></div>
+  <div id="circle-sub2"></div>
+  <div id="circle-rate"></div>
+</div>
+
+<button class="btn" id="start-btn" disabled onclick="start()">Start Prewarm</button>
+<div style="display:flex;gap:16px;justify-content:center;max-width:440px;margin-top:8px">
+  <div id="ext-status" style="font-size:12px;color:#37474f;min-height:16px">checking extension...</div>
+  <div id="ping-status" style="font-size:12px;color:#37474f;min-height:16px">pinging...</div>
+</div>
+<div id="status">Loading...</div>
+<div id="canary-box">
+  <div style="color:#37474f">Checking extension activity</div>
+  <div id="canary-status"></div>
+</div>
+
+<script>
+const CONCURRENCY   = 80;
+const CIRCUMFERENCE = 2 * Math.PI * 130;
+const WARNED_KEY    = 'ls_warmed_v2';
+const CANARY_EVERY  = 1000;   // canary every 1K domains
+const FIRE_BATCH    = 2000;   // max sends ahead of confirmed
+
+const SNAPS       = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+const SNAP_LABELS = ['1K','5K','10K','25K','50K','100K','250K','500K','1M'];
+
+let warmedSet  = new Set(JSON.parse(sessionStorage.getItem(WARNED_KEY) || '[]'));
+let cache      = {};
+let selectedN  = 25000;
+
+// Momentum-based progress each ring moves at its last-known rate between data points
+// so it looks constantly moving rather than jumping in steps.
+
+let sendPct = 0, sendTarget = 0;
+let confPct = 0, confTarget = 0;
+
+// velocity in pct/ms used to keep ring gliding between batch updates
+let sendVel = 0, confVel = 0;
+let lastSendUpdate = 0, lastConfUpdate = 0;
+let sendPrevTarget = 0, confPrevTarget = 0;
+
+function rafLoop() {
+  const now = Date.now();
+
+  // Send ring: glide toward target, keep rolling at last velocity
+  {
+    const dt = now - lastSendUpdate;
+    const coasted = sendPct + sendVel * Math.min(dt, 200);
+    const lerped  = sendPct + (sendTarget - sendPct) * 0.08;
+    sendPct = Math.min(Math.max(sendTarget > sendPct ? Math.max(coasted, lerped) : lerped, 0), 100);
+    document.getElementById('circle-send').style.strokeDashoffset =
+      CIRCUMFERENCE - (sendPct / 100) * CIRCUMFERENCE;
+  }
+
+  // Confirm ring: same approach
+  {
+    const dt = now - lastConfUpdate;
+    const coasted = confPct + confVel * Math.min(dt, 500);
+    const lerped  = confPct + (confTarget - confPct) * 0.04;
+    confPct = Math.min(Math.max(confTarget > confPct ? Math.max(coasted, lerped) : lerped, 0), 100);
+    const offset = CIRCUMFERENCE - (confPct / 100) * CIRCUMFERENCE;
+    document.getElementById('circle-bar').style.strokeDashoffset  = offset;
+    document.getElementById('circle-glow').style.strokeDashoffset = offset;
+    document.querySelector('#circle-pct .pct-num').textContent = Math.round(confPct) + '%';
+  }
+
+  requestAnimationFrame(rafLoop);
+}
+requestAnimationFrame(rafLoop);
+
+function setSendTarget(p) {
+  const now = Date.now();
+  const dt  = now - lastSendUpdate;
+  if (dt > 0 && p > sendPrevTarget)
+    sendVel = (p - sendPrevTarget) / dt;
+  sendPrevTarget  = p;
+  sendTarget      = p;
+  lastSendUpdate  = now;
+}
+
+function setConfTarget(p) {
+  const now = Date.now();
+  const dt  = now - lastConfUpdate;
+  if (dt > 0 && p > confPrevTarget)
+    confVel = (p - confPrevTarget) / dt;
+  confPrevTarget  = p;
+  confTarget      = p;
+  lastConfUpdate  = now;
+}
+
+// Build tick labels
+(function() {
+  const ticks = document.getElementById('snap-ticks');
+  SNAPS.forEach((n, i) => {
+    const s = document.createElement('span');
+    s.className = 'snap-tick' + (n === selectedN ? ' active' : '');
+    s.textContent = SNAP_LABELS[i];
+    s.onclick = () => { document.getElementById('domain-slider').value = i; onSlider(i); };
+    ticks.appendChild(s);
+  });
+})();
+
+function onSlider(idx) {
+  idx = +idx;
+  selectedN = SNAPS[idx];
+  warmedSet = new Set(); saveWarmed(); // reset so full count always fires
+  const el = document.getElementById('slider-display');
+  el.textContent = SNAP_LABELS[idx];
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  document.querySelectorAll('.snap-tick').forEach((el, i) => el.classList.toggle('active', i === idx));
+  loadDomains(selectedN);
+}
+
+async function loadDomains(n) {
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true;
+  if (cache[n]) { updateIdle(cache[n]); return; }
+  setStatus('Downloading top ' + SNAP_LABELS[SNAPS.indexOf(n)] + ' list...');
+  try {
+    const r = await fetch('/prewarm-api/top-domains?n=' + n);
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    cache[n] = j.domains;
+    updateIdle(j.domains);
+  } catch(e) {
+    setStatus('Error: ' + e.message);
+  }
+}
+
+function updateIdle(domains) {
+  sendPct = sendTarget = sendVel = sendPrevTarget = 0;
+  confPct = confTarget = confVel = confPrevTarget = 0;
+  lastSendUpdate = lastConfUpdate = Date.now();
+  document.getElementById('circle-send').style.strokeDashoffset = CIRCUMFERENCE;
+  document.getElementById('circle-bar').style.strokeDashoffset  = CIRCUMFERENCE;
+  document.getElementById('circle-glow').style.strokeDashoffset = CIRCUMFERENCE;
+  document.querySelector('#circle-pct .pct-num').textContent = '0%';
+  document.querySelector('#circle-pct .pct-num').style.color = '#81d4fa';
+  document.querySelector('#circle-pct .pct-lbl').textContent = 'ready';
+  document.querySelector('#circle-pct .pct-lbl').style.color = '#37474f';
+  document.getElementById('circle-sub').textContent  = domains.length.toLocaleString() + ' domains';
+  document.getElementById('circle-sub2').textContent = '';
+  document.getElementById('circle-rate').textContent = '';
+  document.getElementById('confirm-layer').style.background = 'transparent';
+  document.body.style.background = '#060d1a';
+  setStatus(domains.length.toLocaleString() + ' domains');
+  const btn = document.getElementById('start-btn');
+  btn.disabled = false; btn.textContent = 'Start Prewarm';
+  btn.classList.remove('pulse-ready'); void btn.offsetWidth; btn.classList.add('pulse-ready');
+}
+
+function setStatus(txt) {
+  const el = document.getElementById('status');
+  el.textContent = txt;
+  el.classList.remove('update'); void el.offsetWidth; el.classList.add('update');
+}
+
+// Send phase background: light blue rising from bottom
+function updateSendBg(p) {
+  const ir = Math.round(6  + p * 10), ig = Math.round(13 + p * 30), ib = Math.round(26 + p * 70);
+  const top = p * 125;
+  document.body.style.background =
+    `linear-gradient(to top, rgb(${ir},${ig},${ib}) 0%, rgb(${ir},${ig},${ib}) ${Math.max(0,top-25)}%, #060d1a ${Math.min(top,100)}%)`;
+}
+
+// Confirm phase background: deeper blue overlay rising from bottom
+function updateConfBg(p) {
+  const ir = Math.round(4  + p * 8),  ig = Math.round(8  + p * 30), ib = Math.round(40 + p * 130);
+  const top = p * 125;
+  document.getElementById('confirm-layer').style.background =
+    `linear-gradient(to top, rgb(${ir},${ig},${ib}) 0%, rgb(${ir},${ig},${ib}) ${Math.max(0,top-20)}%, transparent ${Math.min(top,100)}%)`;
+}
+
+function saveWarmed() { sessionStorage.setItem(WARNED_KEY, JSON.stringify([...warmedSet])); }
+
+function fire(domain) {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 150);
+  fetch('https://' + domain + '/', { method:'GET', mode:'no-cors', cache:'no-store', signal:ctrl.signal, keepalive:false })
+    .catch(() => {});
+}
+
+function makeCanary() {
+  return 'prewarm-' + Math.random().toString(36).slice(2,12) + '.lsrelay.io';
+}
+
+async function waitCanary(domain, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 1200));
+    try {
+      const j = await (await fetch('/prewarm-api/check-canary?domain=' + encodeURIComponent(domain))).json();
+      if (j.found) return true;
+    } catch(e) {}
+  }
+  return false;
+}
+
+function flashScreen(color) {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;inset:0;background:${color};opacity:0;pointer-events:none;z-index:999;transition:opacity .3s ease`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.opacity = '0.22';
+    setTimeout(() => { el.style.transition='opacity 1.4s ease'; el.style.opacity='0'; setTimeout(()=>el.remove(),1500); }, 500);
+  });
+}
+
+async function start() {
+  const useCustom = document.getElementById('custom-toggle').checked;
+  const baseDomains = cache[selectedN] || [];
+  const extra = useCustom ? [...customBlocked].filter(d => !baseDomains.includes(d)) : [];
+  let domains = [...baseDomains, ...extra].filter(d => !warmedSet.has(d));
+  if (!domains.length) { warmedSet = new Set(); saveWarmed(); domains = [...baseDomains, ...extra]; }
+
+  const total      = domains.length;
+  const btn        = document.getElementById('start-btn');
+  const lbl        = document.querySelector('#circle-pct .pct-lbl');
+  const canarySet  = new Set();
+
+  btn.disabled = true; btn.textContent = 'Sending...';
+  lbl.textContent = 'sending'; lbl.style.color = '#1565c0';
+  document.getElementById('canary-box').style.display = 'none';
+  document.body.classList.add('running');
+
+  const t0 = Date.now();
+  let totalFired = 0, totalConfirmed = 0;
+
+  const outerBatches = Math.ceil(total / FIRE_BATCH);
+
+  const allCanaries = [];
+
+  const sendPromise = (async () => {
+    for (let i = 0; i < total; i++) {
+      // Pause if sends are more than 10K ahead of confirmed
+      while (totalFired - totalConfirmed >= FIRE_BATCH)
+        await new Promise(r => setTimeout(r, 100));
+
+      fire(domains[i]);
+      warmedSet.add(domains[i]);
+      totalFired++;
+
+      // Drop canary every 1K
+      if (totalFired % CANARY_EVERY === 0 || totalFired === total) {
+        const cv = makeCanary();
+        allCanaries.push({ cv, at: totalFired });
+        canarySet.add(cv);
+        fire(cv);
+      }
+
+      const sPct = Math.round(totalFired / total * 100);
+      setSendTarget(sPct);
+      updateSendBg(totalFired / total);
+      document.getElementById('circle-sub').textContent =
+        totalFired.toLocaleString() + ' / ' + total.toLocaleString() + ' sent  (' + sPct + '%)';
+
+      if (totalFired % CONCURRENCY === 0) await new Promise(r => setTimeout(r, 16));
+    }
+    saveWarmed();
+    document.body.classList.remove('running');
+  })();
+
+  const confirmPromise = (async () => {
+    let ci = 0;
+    const totalCanaries = Math.ceil(total / CANARY_EVERY);
+    while (ci < totalCanaries) {
+      while (allCanaries.length <= ci) await new Promise(r => setTimeout(r, 50));
+      const { cv, at } = allCanaries[ci];
+      const ok = await waitCanary(cv, 30000);
+      if (ok) {
+        totalConfirmed = Math.min(at, total);
+        const pct     = Math.round(totalConfirmed / total * 100);
+        const elapsed = (Date.now() - t0) / 1000;
+        setConfTarget(pct);
+        updateConfBg(pct / 100);
+        document.getElementById('circle-sub2').textContent =
+          totalConfirmed.toLocaleString() + ' / ' + total.toLocaleString() + ' confirmed  (' + pct + '%)';
+        document.getElementById('circle-rate').textContent =
+          Math.round(totalConfirmed / elapsed) + '/s confirmed';
+        // First confirm overrides on-load check result
+        const es = document.getElementById('ext-status');
+        if (es.style.color !== '#29b6f6') {
+          es.style.color = '#29b6f6';
+          es.textContent = '● extension active';
+        }
+      }
+      ci++;
+    }
+  })();
+
+  await Promise.all([sendPromise, confirmPromise]);
+  lbl.textContent = 'confirming'; lbl.style.color = '#546e7a';
+  btn.textContent = 'Confirming...';
+
+  document.body.classList.remove('running');
+
+  //  Done 
+  setConfTarget(100); setSendTarget(100);
+  await new Promise(r => setTimeout(r, 500));
+  lbl.textContent = 'done'; lbl.style.color = '#29b6f6';
+  document.querySelector('#circle-pct .pct-num').style.color = '#42a5f5';
+  document.getElementById('circle-rate').textContent = ((Date.now()-t0)/1000).toFixed(1) + 's total';
+  document.getElementById('circle-sub2').textContent =
+    total.toLocaleString() + ' / ' + total.toLocaleString() + ' confirmed  (100%)';
+  setStatus('Done ' + total.toLocaleString() + ' domains');
+  btn.textContent = 'Done';
+  flashScreen('#00e676');
+}
+
+async function checkExtensionOnLoad() {
+  const el = document.getElementById('ext-status');
+  // Fire 3 canaries to warm up the extension and give multiple chances
+  const canaries = [makeCanary(), makeCanary(), makeCanary()];
+  canaries.forEach(c => fire(c));
+  for (const c of canaries) {
+    const ok = await waitCanary(c, 10000);
+    if (ok) {
+      el.style.color = '#29b6f6';
+      el.textContent = '● extension active';
+      return;
+    }
+  }
+  el.style.color = '#ef5350';
+  el.textContent = '● extension not detected';
+}
+
+//  Search 
+let searchTimer = null;
+let lastSearchDomain = null;
+
+function onSearch(q) {
+  clearTimeout(searchTimer);
+  const el = document.getElementById('search-result');
+  q = q.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+  if (!q) { el.innerHTML = ''; lastSearchDomain = null; return; }
+  el.style.opacity = '0.5'; el.textContent = 'searching...';
+  searchTimer = setTimeout(() => doSearch(q), 400);
+}
+
+async function doSearch(q) {
+  const el = document.getElementById('search-result');
+  try {
+    const j = await (await fetch('/prewarm-api/domain-rank?domain=' + encodeURIComponent(q))).json();
+    lastSearchDomain = j.domain;
+    const inCustom = customBlocked.has(j.domain) || customBlocked.has('www.' + j.domain);
+    let cls = 'none';
+    if      (j.rank <= 1000)   cls = 'top1k';
+    else if (j.rank <= 5000)   cls = 'top5k';
+    else if (j.rank <= 10000)  cls = 'top10k';
+    else if (j.rank <= 100000) cls = 'top100k';
+    else if (j.rank)           cls = 'top1m';
+    // Validate: has a dot, TLD is 2+ letters, no spaces/invalid chars
+    const parts = j.domain.split('.');
+    const validDomain = parts.length >= 2 && parts[parts.length-1].length >= 2 && /^[a-z]+$/.test(parts[parts.length-1]) && parts.every(p => p.length > 0);
+    const showAdd = validDomain && (!j.rank || inCustom);
+    const addBtn = !showAdd ? '' : (!inCustom
+      ? `<button onclick="addCustom('${j.domain}')" style="margin-left:10px;background:#0d2137;border:1px solid #1565c0;color:#42a5f5;font-family:monospace;font-size:11px;padding:3px 10px;border-radius:3px;cursor:pointer">+ add</button>`
+      : '');
+    el.style.opacity = '1';
+    el.innerHTML = '<span style="color:#81d4fa">' + j.domain + '</span>' +
+      '<span class="rank-badge ' + cls + '">' + (j.rank ? '#' + j.rank.toLocaleString() + ' ' + j.tier : 'Not in top 1M') + '</span>' +
+      (inCustom ? '<span class="rank-custom">● custom</span>' : '') +
+      addBtn;
+  } catch(e) {
+    el.style.opacity = '1';
+    el.innerHTML = '<span style="color:#37474f">' + q + '</span><span class="rank-badge none">rank index loading...</span>';
+  }
+}
+
+async function addCustom(domain) {
+  // Show verifying state
+  const el = document.getElementById('search-result');
+  const prev = el.innerHTML;
+  el.innerHTML = el.innerHTML.replace('+ add', 'verifying...');
+
+  try {
+    const r = await fetch('/prewarm-api/custom-add', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({domain})
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      el.innerHTML = prev.replace(
+        '+ add',
+        '<span style="color:#ef5350">' + (j.error || 'failed') + '</span>'
+      );
+      setTimeout(() => doSearch(domain), 2000);
+      return;
+    }
+    customBlocked.add(domain);
+    doSearch(domain);
+  } catch(e) {
+    el.innerHTML = prev;
+  }
+}
+
+
+//  Custom blocked list 
+let customBlocked = new Set();
+async function loadCustomBlocked() {
+  try {
+    const j = await (await fetch('/prewarm-api/custom-blocked')).json();
+    customBlocked = new Set(j.domains);
+    if (j.count) {
+      document.getElementById('ext-status').textContent +=
+        '  ·  ' + j.count + ' custom domains';
+    }
+  } catch(e) {}
+}
+
+async function measurePing() {
+  const el = document.getElementById('ping-status');
+  const samples = [];
+  for (let i = 0; i < 5; i++) {
+    const t = Date.now();
+    try { await fetch('/prewarm-api/ping'); } catch(e) {}
+    samples.push(Date.now() - t);
+    await new Promise(r => setTimeout(r, 200));
+  }
+  samples.sort((a,b) => a-b);
+  const median = samples[2];
+  let col = '#29b6f6';
+  if (median > 200) col = '#ffca28';
+  if (median > 500) col = '#ef5350';
+  el.style.color = col;
+  el.textContent = '● ' + median + 'ms to vps';
+  setTimeout(measurePing, 10000);
+}
+
+loadDomains(25000);
+checkExtensionOnLoad();
+loadCustomBlocked();
+setInterval(loadCustomBlocked, 30000);
+measurePing(); // refresh custom list every 30s
+</script>
+</body>
+</html>
