@@ -29,9 +29,11 @@ Chrome needs this to trust the server's connection. Without it you'll just get a
 ### Step 2: Import the Certificate
 
 1. Go to `chrome://certificate-manager/localcerts/usercerts`
-2. Click **Import**
+2. Click the **Import** button next to **Trusted Certificates**
 3. Select `network-cert.crt`
 4. Click **Open**
+5. Check **Trust this certificate for identifying websites**
+6. Click **OK**
 
 ---
 
