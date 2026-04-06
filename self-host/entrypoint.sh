@@ -33,8 +33,24 @@ fi
 PUBLIC_IP=$(curl -s --max-time 10 https://api.ipify.org || curl -s --max-time 10 https://ifconfig.me)
 echo "Public IP: $PUBLIC_IP"
 
-# Use baked-in CA, generate server cert per-IP if not already present
+# Generate new CA for this host if not already present
 cd /etc/ssl/lsrelay
+if [ ! -f ca.crt ] || [ ! -f ca.key ]; then
+    echo "Generating new CA certificate for this host..."
+    
+    # Generate CA key
+    openssl genrsa -out ca.key 4096
+    
+    # Generate self-signed CA certificate
+    openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 \
+        -out ca.crt -subj "/CN=LIDNS-Local-CA" 2>/dev/null
+    
+    echo "CA certificate generated."
+else
+    echo "Using existing CA certificate."
+fi
+
+# Generate server cert signed by this host's CA
 if [ ! -f server.crt ]; then
     echo "Generating server certificate for $PUBLIC_IP..."
 
