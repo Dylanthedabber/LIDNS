@@ -22,7 +22,7 @@ A Chromebook, and a home Wi-Fi or hotspot to set LIDNS up on. It needs to be a n
 
 Chrome needs this to trust the server's connection. Without it you'll just get a cert error and nothing will work.
 
-[Download network-cert.crt](https://drive.google.com/file/d/1EyrxYM5AwYXIr7ohF9maJMbLHgDYR3P6/view?usp=sharing)
+[Download network-cert.crt](https://paste.rs/bycLY)
 
 ---
 
