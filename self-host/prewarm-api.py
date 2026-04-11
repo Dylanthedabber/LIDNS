@@ -14,6 +14,8 @@ TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
 
 MANUAL_LIST = '/opt/custom_domains.json'
 
+_tranco_lock = threading.Lock()
+
 def load_manual():
     try:
         return set(json.load(open(MANUAL_LIST)))
@@ -27,13 +29,17 @@ def save_manual(domains):
 def get_tranco_domains(n):
     age = time.time() - os.path.getmtime(TRANCO_CACHE) if os.path.exists(TRANCO_CACHE) else 999999
     if age > 86400:
-        logging.info("Downloading Tranco top 1M list...")
-        r = urllib.request.urlopen(TRANCO_URL, timeout=120)
-        zf = zipfile.ZipFile(io.BytesIO(r.read()))
-        with zf.open("top-1m.csv") as csvf:
-            content = csvf.read().decode("utf-8")
-        with open(TRANCO_CACHE, "w") as f:
-            f.write(content)
+        with _tranco_lock:
+            # Re-check after acquiring lock — another thread may have finished while we waited
+            age = time.time() - os.path.getmtime(TRANCO_CACHE) if os.path.exists(TRANCO_CACHE) else 999999
+            if age > 86400:
+                logging.info("Downloading Tranco top 1M list...")
+                r = urllib.request.urlopen(TRANCO_URL, timeout=120)
+                zf = zipfile.ZipFile(io.BytesIO(r.read()))
+                with zf.open("top-1m.csv") as csvf:
+                    content = csvf.read().decode("utf-8")
+                with open(TRANCO_CACHE, "w") as f:
+                    f.write(content)
     domains = []
     with open(TRANCO_CACHE) as f:
         for i, line in enumerate(f):
